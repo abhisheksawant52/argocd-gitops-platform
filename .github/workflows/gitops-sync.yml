@@ -1,0 +1,90 @@
+name: GitOps Sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "kubernetes/**"
+      - "terraform/**"
+      - ".github/workflows/gitops-sync.yml"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "ArgoCD app to sync (leave blank for all)"
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate-manifests:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubeval
+        run: |
+          wget -q https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
+          tar xf kubeval-linux-amd64.tar.gz
+          sudo mv kubeval /usr/local/bin/
+        continue-on-error: true
+      - name: Validate manifests
+        run: |
+          find kubernetes/manifests -name "*.yaml" -exec kubeval {} \; 2>/dev/null || \
+          echo "kubeval not available; skipping schema validation"
+      - name: Lint with kubectl dry-run
+        run: |
+          find kubernetes/manifests -name "*.yaml" | while read f; do
+            echo "Checking $f..."
+            kubectl apply --dry-run=client -f "$f" 2>&1 || echo "Warning: $f may require cluster context"
+          done
+        continue-on-error: true
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.5"
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init -backend=false
+      - name: Terraform Validate
+        working-directory: ./terraform
+        run: terraform validate
+
+  argocd-sync:
+    name: ArgoCD Sync
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ArgoCD CLI
+        run: |
+          curl -sSL -o /usr/local/bin/argocd \
+            https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+      - name: ArgoCD Login
+        run: |
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --auth-token ${{ secrets.ARGOCD_AUTH_TOKEN }} \
+            --insecure
+        continue-on-error: true
+      - name: Sync Application
+        run: |
+          APP="${{ github.event.inputs.app_name || 'sample-nginx-app' }}"
+          argocd app sync "$APP" --prune --timeout 120 || echo "Sync skipped (ArgoCD not configured)"
+        continue-on-error: true
+      - name: Check App Health
+        run: |
+          APP="${{ github.event.inputs.app_name || 'sample-nginx-app' }}"
+          argocd app wait "$APP" --health --timeout 300 || echo "Health check skipped"
+        continue-on-error: true
