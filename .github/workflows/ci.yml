@@ -1,10 +1,92 @@
-
 name: CI
+
 on:
   push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: echo Build successful
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check src tests
+      - name: Black
+        run: black --check src tests
+
+  test:
+    name: Test (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Pytest
+        run: pytest
+
+  manifests:
+    name: Validate manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PyYAML
+        run: pip install PyYAML
+      - name: Validate YAML is well-formed
+        run: |
+          python - <<'PY'
+          import glob, sys, yaml
+          errors = 0
+          paths = glob.glob("argocd/**/*.yaml", recursive=True)
+          paths += glob.glob("manifests/**/*.yaml", recursive=True)
+          paths += glob.glob("clusters/**/*.yaml", recursive=True)
+          for path in sorted(paths):
+              try:
+                  list(yaml.safe_load_all(open(path, encoding="utf-8")))
+                  print(f"ok   {path}")
+              except yaml.YAMLError as exc:
+                  print(f"FAIL {path}: {exc}")
+                  errors += 1
+          sys.exit(1 if errors else 0)
+          PY
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t argocd-gitops-platform:ci .

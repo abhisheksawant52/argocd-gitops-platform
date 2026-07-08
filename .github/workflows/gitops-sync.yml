@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "kubernetes/**"
+      - "manifests/**"
+      - "argocd/**"
       - "terraform/**"
       - ".github/workflows/gitops-sync.yml"
   pull_request:
@@ -33,11 +34,11 @@ jobs:
         continue-on-error: true
       - name: Validate manifests
         run: |
-          find kubernetes/manifests -name "*.yaml" -exec kubeval {} \; 2>/dev/null || \
+          find manifests -name "*.yaml" -exec kubeval {} \; 2>/dev/null || \
           echo "kubeval not available; skipping schema validation"
       - name: Lint with kubectl dry-run
         run: |
-          find kubernetes/manifests -name "*.yaml" | while read f; do
+          find manifests -name "*.yaml" | while read f; do
             echo "Checking $f..."
             kubectl apply --dry-run=client -f "$f" 2>&1 || echo "Warning: $f may require cluster context"
           done
@@ -80,11 +81,11 @@ jobs:
         continue-on-error: true
       - name: Sync Application
         run: |
-          APP="${{ github.event.inputs.app_name || 'sample-nginx-app' }}"
+          APP="${{ github.event.inputs.app_name || 'sample-nginx' }}"
           argocd app sync "$APP" --prune --timeout 120 || echo "Sync skipped (ArgoCD not configured)"
         continue-on-error: true
       - name: Check App Health
         run: |
-          APP="${{ github.event.inputs.app_name || 'sample-nginx-app' }}"
+          APP="${{ github.event.inputs.app_name || 'sample-nginx' }}"
           argocd app wait "$APP" --health --timeout 300 || echo "Health check skipped"
         continue-on-error: true

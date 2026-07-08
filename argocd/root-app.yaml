@@ -1,0 +1,32 @@
+---
+# App-of-apps root Application.
+#
+# This single Application watches `argocd/applications/` in git and renders each
+# child Application it finds there. Apply it once to bootstrap the platform:
+#   kubectl apply -f argocd/root-app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-root
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: argocd-gitops-platform
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/abhisheksawant52/argocd-gitops-platform
+    targetRevision: HEAD
+    path: argocd/applications
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,38 @@
+---
+# ArgoCD namespace.
+#
+# Install the ArgoCD control plane first:
+#   kubectl create namespace argocd
+#   kubectl apply -n argocd \
+#     -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+#
+# Then apply this file to create the namespace labels and expose the API server.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    app.kubernetes.io/name: argocd
+    app.kubernetes.io/part-of: argocd-gitops-platform
+    app.kubernetes.io/managed-by: kubectl
+---
+# Expose the ArgoCD API/UI server via a LoadBalancer service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server-lb
+  namespace: argocd
+  labels:
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: argocd-gitops-platform
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: argocd-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+    - name: https
+      port: 443
+      targetPort: 8080

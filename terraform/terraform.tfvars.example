@@ -1,0 +1,5 @@
+# Copy to terraform.tfvars and adjust for your cluster.
+argocd_namespace    = "argocd"
+argocd_helm_version = "6.11.1"
+argocd_image_tag    = "v2.11.3"
+argocd_service_type = "LoadBalancer"

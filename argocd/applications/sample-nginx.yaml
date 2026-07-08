@@ -1,27 +1,25 @@
 ---
-# Sample ArgoCD Application manifest
-# Apply this to ArgoCD to deploy a sample app via GitOps
+# Child Application deployed by the app-of-apps root.
+# Deploys the sample nginx workload from `manifests/sample-nginx` via GitOps.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sample-nginx-app
+  name: sample-nginx
   namespace: argocd
   labels:
+    app.kubernetes.io/part-of: argocd-gitops-platform
     app.kubernetes.io/managed-by: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
-
+  project: platform
   source:
     repoURL: https://github.com/abhisheksawant52/argocd-gitops-platform
     targetRevision: HEAD
-    path: kubernetes/manifests
-
+    path: manifests/sample-nginx
   destination:
     server: https://kubernetes.default.svc
     namespace: sample-app
-
   syncPolicy:
     automated:
       prune: true

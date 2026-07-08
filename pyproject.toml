@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gitops-platform"
+version = "0.1.0"
+description = "ArgoCD GitOps control helper — sync, status, and configuration drift detection"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Abhishek Sawant" }]
+keywords = ["argocd", "gitops", "kubernetes", "devops", "drift-detection"]
+dependencies = [
+    "click>=8.1",
+    "requests>=2.32",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.5", "black>=24.0", "pre-commit>=3.7"]
+
+[project.scripts]
+gitops-platform = "gitops_platform.main:main"
+
+[project.urls]
+Homepage = "https://github.com/abhisheksawant52/argocd-gitops-platform"
+Issues = "https://github.com/abhisheksawant52/argocd-gitops-platform/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+pythonpath = ["src"]

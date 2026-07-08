@@ -1,0 +1,30 @@
+---
+# AppProject that scopes which repositories, clusters, and namespaces the
+# platform's applications may deploy to. Applications reference this project via
+# `spec.project: platform`.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: argocd-gitops-platform
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Applications managed by the argocd-gitops-platform repository.
+  sourceRepos:
+    - https://github.com/abhisheksawant52/argocd-gitops-platform
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: sample-app
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true

@@ -1,0 +1,4 @@
+click>=8.1
+requests>=2.32
+pydantic>=2.7
+pydantic-settings>=2.3
