@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------- Stage 1: build wheel ----------
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /build
 
@@ -12,7 +12,7 @@ RUN python -m pip install --upgrade pip build \
     && python -m build --wheel --outdir /dist
 
 # ---------- Stage 2: runtime ----------
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # Create an unprivileged user to run the control helper.
 RUN groupadd --system --gid 1001 gitops \
